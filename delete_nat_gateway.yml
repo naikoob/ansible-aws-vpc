@@ -1,0 +1,38 @@
+# delete_nat_gateway.yml
+---
+#
+# Deletes the NAT gateway with assumed role. If not using assumed role,
+# just comment/remove the pre_tasks and set environment variables explicitly
+# per role or at the OS level. 
+#
+# For example, if set the AWS_ACCESS_KEY etc as OS level environment, 
+# the play can be written as follows:
+#
+#- hosts: demo_vpc
+#  tasks:
+#    - name: read nat_gateway_id variable
+#      include_vars: "out/nat_gateway_id.var"
+#
+#    - include_tasks: roles/infra/tasks/delete_nat_gateway.yml
+#
+- hosts: demo_vpc
+  pre_tasks:
+    - sts_assume_role:
+        role_arn: "arn:aws:iam::{{aws_account}}:role/{{aws_role}}"
+        role_session_name: "ansible"
+        region: "{{ aws_region }}"
+        profile: "{{ aws_source_profile }}"
+      register: assumed_role
+
+  tasks:
+    - name: read nat_gateway_id variable
+      include_vars: "out/nat_gateway_id.var"
+
+    - name: delete nat gateway 
+      include: roles/infra/tasks/delete_nat_gateway.yml
+      environment:
+        AWS_ACCESS_KEY: "{{ assumed_role.sts_creds.access_key }}"
+        AWS_SECRET_KEY: "{{ assumed_role.sts_creds.secret_key }}"
+        AWS_SECURITY_TOKEN: "{{ assumed_role.sts_creds.session_token }}"
+        AWS_PROFILE: "{{ aws_profile }}"
+        AWS_REGION: "{{ aws_region }}"

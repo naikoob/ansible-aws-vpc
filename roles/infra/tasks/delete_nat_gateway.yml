@@ -1,0 +1,15 @@
+# roles/infra/tasks
+---
+
+# delete nat gateway
+# expected inputs (vars):
+#   nat_gateway_id - the id of the nat gateway to be deleted
+#   aws_region - aws region where the nat gateway reside  
+- name: delete nat gateway
+  ec2_vpc_nat_gateway:
+    state: absent
+    nat_gateway_id: "{{ nat_gateway_id }}"
+    release_eip: yes
+    wait: yes
+    wait_timeout: 500
+    region: "{{ aws_region }}"

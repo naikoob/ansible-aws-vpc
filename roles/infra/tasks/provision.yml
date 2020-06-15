@@ -1,0 +1,104 @@
+# roles/infra/tasks/provision.yml
+---
+
+# create vpc and register result as vpc
+- name: create vpc
+  ec2_vpc_net:
+    name: "{{ vpc_name }}"
+    state: present
+    cidr_block: "{{ vpc_cidr_block }}"
+    region: "{{ aws_region }}"
+    tags: "{{ common_tags }}"
+  register: vpc
+
+# register vpc_id for subsequent tasks
+- name: set vpc fact
+  set_fact:
+    vpc_id: "{{ vpc.vpc.id }}"
+
+- name: create private hosted zone
+  route53_zone:
+    zone: "{{ vpc_dns_zone }}"
+    state: "present"
+    vpc_id: "{{ vpc_id }}"
+    vpc_region: "{{ aws_region }}"
+  register: hosted_zone
+
+- name: create private subnets
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ item.cidr }}"
+    az: "{{ item.az }}"
+    tags: "{{ common_tags }}"
+  with_items: "{{ vpc_private_subnets }}"
+  register: private_subnet_list
+
+- name: set private_subnets fact
+  set_fact:
+    private_subnets_id: "{{ private_subnets_id | default([]) | union([item.subnet.id]) }}"
+  with_items: "{{ private_subnet_list.results }}"
+
+- name: create public subnets
+  ec2_vpc_subnet:
+    state: present
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ item.cidr }}"
+    az: "{{ item.az }}"
+    tags: "{{ common_tags }}"
+  with_items: "{{ vpc_public_subnets }}"
+  register: public_subnet_list
+
+- name: set public_subnets fact
+  set_fact:
+    public_subnets_id: "{{ public_subnets_id | default([]) | union([item.subnet.id]) }}"
+  with_items: "{{ public_subnet_list.results }}"
+
+- name: set up internet gateway
+  ec2_vpc_igw:
+    vpc_id: "{{ vpc_id }}"
+    state: present
+    tags: "{{ {'Name': vpc_name + '.igw' } | combine(common_tags) }}"
+  register: igw
+
+- name: set up public subnets route table
+  ec2_vpc_route_table:
+    vpc_id: "{{ vpc_id }}"
+    region: "{{ aws_region }}"
+    tags: "{{ {'Name': vpc_name + '.public' } | combine(common_tags) }}"
+    subnets: "{{ public_subnets_id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ igw.gateway_id }}"
+  register: public_route_table
+
+- name: setup nat gateway
+  ec2_vpc_nat_gateway:
+    state: present
+    subnet_id: "{{ public_subnets_id[0] }}"
+    wait: yes
+    region: "{{ aws_region }}"
+    if_exist_do_not_create: true
+  register: nat_gateway
+
+- name: ensure output directory is present
+  file:
+    path: "{{ playbook_dir }}/out" 
+    state: directory
+
+- name: save nat gateway information
+  local_action:
+    module: copy
+    content: "---\nnat_gateway_id: {{ nat_gateway.nat_gateway_id }}\n"
+    dest: "{{ playbook_dir }}/out/nat_gateway_id.var"
+
+- name: set up private subnets route table
+  ec2_vpc_route_table:
+    vpc_id: "{{ vpc_id }}"
+    region: "{{ aws_region }}"
+    tags: "{{ {'Name': vpc_name + '.private' } | combine(common_tags) }}"
+    subnets: "{{ private_subnets_id }}"
+    routes:
+      - dest: 0.0.0.0/0
+        nat_gateway_id: "{{ nat_gateway.nat_gateway_id }}"
+  register: private_route_table

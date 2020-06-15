@@ -1,0 +1,6 @@
+# base infrastructure inventory
+[aws_vpc]
+demo_vpc 
+
+[aws_infra:children]
+aws_vpc

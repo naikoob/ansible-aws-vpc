@@ -1,0 +1,19 @@
+# host_vars/vpc.yml
+
+# general details
+vpc_name: demo.vpc
+vpc_dns_zone: demo.example.com.private
+
+# CIDR block
+vpc_cidr_block: 10.0.0.0/16
+
+# Private subnets
+vpc_private_subnets:
+  - { cidr: "10.0.21.0/24", az: "{{ aws_region }}a" }
+  - { cidr: "10.0.22.0/24", az: "{{ aws_region }}b" }
+  - { cidr: "10.0.23.0/24", az: "{{ aws_region }}c" }
+
+vpc_public_subnets:
+  - { cidr: "10.0.201.0/24", az: "{{ aws_region }}a" }
+  - { cidr: "10.0.202.0/24", az: "{{ aws_region }}b" }
+  - { cidr: "10.0.203.0/24", az: "{{ aws_region }}c" }

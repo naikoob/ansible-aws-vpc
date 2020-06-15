@@ -1,0 +1,45 @@
+:icons: font
+
+= Ansible playbooks to create an AWS VPC
+
+== What's created
+. VPC
+. Route 53 private hosted zone associated with VPC
+. 3 public subnets across 3 AZs
+. 3 private subnets across 3 AZs
+. Internet Gateway and associated route table
+. NAT Gateway and associated route table
+
+== Usage
+
+=== AWS config
+You should have AWS profile and credentials (~/.aws/config and ~/.aws/credentials) configured for the target AWS account. 
+
+The plays uses AWS Session Token Service(*) to assume role to provision the infrastructure. Update `inventory/group_vars/aws_infra.yml` with the STS account and role information.
+
+NOTE: STS is used because I'm using multi account setup and some ansible modules does not support assumed role in AWS profile. 
+
+=== Inventories
+There is only 1 inventory currently - inventory/base_infra
+
+=== Playbooks
+There are 2 playbooks currently:
+|===
+|Playbook | Description
+
+| provision_infra.yml
+| provision/unprovision the VPC and associated resources (set variable infra_state=absent to unprovision)
+
+| delete_nat_gateway.yml
+| deletes the NAT gateway (to save $ when not using) and releases the associated EIP. To re-create the NAT gateway, just re-run the base_infra.yml playbook
+|===
+
+=== Example
+To provision the VPC:
+----
+# provision
+ansible-playbook -i inventory/base_infra provision_infra.yml
+
+# unprovision
+ansible-playbook -i inventory/base_infra provision_infra.yml -e infra_state=absent
+----

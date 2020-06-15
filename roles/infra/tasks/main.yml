@@ -1,0 +1,9 @@
+# roles/infra/tasks/main.yml
+---
+
+# provision aws infra
+- include: provision.yml
+
+# unprovision aws infra
+- include: unprovision.yml
+  when: infra_state|default('present') == "absent"

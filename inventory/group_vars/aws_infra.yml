@@ -1,0 +1,17 @@
+# group_vars/aws_infra.yml
+# ---
+# specify infrastructure details and AWS credentials
+
+# aws account, role, profile and region
+aws_account: "<AWS_ACCOUNT_NUMBER>"
+aws_role: "<AWS_ROLE>"
+aws_profile: "<AWS_PROFILE>"                # assumed profile used for provisioning
+aws_source_profile: "<AWS_SOURCE_PROFILE>"  # profile used to assume role
+aws_region: "<AWS_REGION>"
+
+# run Ansible locally, not over SSH
+ansible_connection: local
+
+# aws module defaults
+common_tags:
+  Stack: demospace

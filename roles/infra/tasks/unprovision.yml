@@ -1,0 +1,64 @@
+# roles/infra/tasks/unprovision.yml
+---
+
+# delete nat gateway
+- include: delete_nat_gateway.yml
+  vars:
+    nat_gateway_id: "{{ nat_gateway.nat_gateway_id }}"
+
+- name: delete private route table
+  ec2_vpc_route_table:
+    state: absent
+    vpc_id: "{{ vpc_id }}"
+    region: "{{ aws_region }}"
+    route_table_id: "{{ private_route_table.route_table.id }}"
+    lookup: id
+
+# delete igw
+- name: remote internet gateway
+  ec2_vpc_igw:
+    vpc_id: "{{ vpc_id }}"
+    state: absent
+
+- name: delete public route table
+  ec2_vpc_route_table:
+    state: absent
+    vpc_id: "{{ vpc_id }}"
+    region: "{{ aws_region }}"
+    route_table_id: "{{ public_route_table.route_table.id }}"
+    lookup: id
+
+# delete public subnets
+- name: remove public subnets
+  ec2_vpc_subnet:
+    state: absent
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ item.cidr }}"
+  with_items: 
+    "{{ vpc_public_subnets }}"
+
+# delete private subnets
+- name: remove private subnets
+  ec2_vpc_subnet:
+    state: absent
+    vpc_id: "{{ vpc_id }}"
+    cidr: "{{ item.cidr }}"
+  with_items: 
+    "{{ vpc_private_subnets }}"
+
+# remove private hosted zone
+- name: remove private hosted zone
+  route53_zone:
+    zone: "{{ vpc_dns_zone }}"
+    hosted_zone_id: "{{ hosted_zone.zone_id }}"
+    state: absent
+    vpc_id: "{{ vpc_id }}"
+    vpc_region: "{{ aws_region }}"
+
+# delete vpc 
+- name: remove vpc
+  ec2_vpc_net:
+    name: "{{ vpc_name }}"
+    state: absent
+    cidr_block: "{{ vpc_cidr_block }}"
+    region: "{{ aws_region }}"
